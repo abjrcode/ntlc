@@ -6,7 +6,3 @@ authors = ["Ibrahim Najjar <abnajjar@hotmail.com>"]
 description = "Neo Typed Lambda Calculus"
 repository = "git@github.com:abjrcode/ntlc.git"
 license-file = "LICENSE"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
