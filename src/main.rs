@@ -3,13 +3,19 @@ mod parser;
 
 mod type_checker;
 
+use std::fs::File;
+
 use crate::parser::parse;
 use lexer::scan;
 
 fn main() {
-    let input = "if    true then (0)   else (succ    (0))";
+    let input = File::open("examples/a.ntlc").unwrap();
 
-    let tokens = scan(input).unwrap();
+    let mut program = std::io::read_to_string(input).unwrap();
+
+    program = program.trim().to_string();
+
+    let tokens = scan(&program).unwrap();
 
     tokens.iter().for_each(|t| print!("{} ", t));
 
