@@ -2,3 +2,9 @@
 .vscode-test/**
 .gitignore
 vsc-extension-quickstart.md
+node_modules
+out/
+tsconfig.json
+webpack.config.js
+client/**
+target

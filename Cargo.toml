@@ -1,11 +1,11 @@
 [workspace]
 
 members = [
-    "compiler-core",
     "compiler",
-    "lsp_server",
+    "lsp-server",
 ]
 
 default-members = [
-    "compiler"
+    "compiler",
+    "lsp-server",
 ]

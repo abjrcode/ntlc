@@ -1,25 +1,65 @@
 {
-  "name": "ntlc-lsp",
-  "displayName": "ntlc-lsp",
-  "description": "Neo Typed Lambda Calculus Language Server",
-  "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.81.0"
-  },
-  "categories": [
-    "Programming Languages"
-  ],
-  "contributes": {
-    "languages": [{
-      "id": "ntlc",
-      "aliases": ["NTLC", "ntlc"],
-      "extensions": [".ntlc"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "ntlc",
-      "scopeName": "source.ntlc",
-      "path": "./syntaxes/ntlc.tmLanguage.json"
-    }]
-  }
+    "name": "ntlc-lsp",
+    "displayName": "ntlc-lsp",
+    "description": "Neo Typed Lambda Calculus Language Server",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.81.0"
+    },
+    "devDependencies": {
+        "@types/node": "^17.0.18",
+        "vscode-test": "^1.3.0",
+        "@types/vscode": "~1.65.0"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^8.0.2"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "ntlc",
+                "aliases": [
+                    "NTLC",
+                    "ntlc"
+                ],
+                "extensions": [
+                    ".ntlc"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "ntlc",
+                "scopeName": "source.ntlc",
+                "path": "./syntaxes/ntlc.tmLanguage.json"
+            }
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "ntlc-language-server",
+            "properties": {
+                "ntlc-language-server.trace.server": {
+                    "type": "string",
+                    "scope": "window",
+                    "enum": [
+                        "off",
+                        "messages",
+                        "verbose"
+                    ],
+                    "enumDescriptions": [
+                        "No traces",
+                        "Error only",
+                        "Full log"
+                    ],
+                    "default": "off",
+                    "description": "Traces the communication between VS Code and the language server."
+                }
+            }
+        }
+    }
 }
