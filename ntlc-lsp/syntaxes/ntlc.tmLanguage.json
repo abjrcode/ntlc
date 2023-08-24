@@ -1,0 +1,53 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "NTLC",
+    "patterns": [
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#builtins"
+        },
+        {
+            "include": "#special-constants"
+        },
+        {
+            "include": "#numbers"
+        }
+    ],
+    "repository": {
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.ntlc",
+                    "match": "\\b(if|then|else)\\b"
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.ntlc",
+                    "match": "\\b(0)\\b"
+                }
+            ]
+        },
+        "builtins": {
+            "patterns": [
+                {
+                    "name": "support.function.ntlc",
+                    "match": "\\b(succ|pred|iszero)\\b"
+                }
+            ]
+        },
+        "special-constants": {
+            "patterns": [
+                {
+                    "name": "constant.language.ntlc",
+                    "match": "\\b(true|false)\\b"
+                }
+            ]
+        }
+    },
+    "scopeName": "source.ntlc"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "ntlc-lsp",
+  "displayName": "ntlc-lsp",
+  "description": "Neo Typed Lambda Calculus Language Server",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.81.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "ntlc",
+      "aliases": ["NTLC", "ntlc"],
+      "extensions": [".ntlc"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "ntlc",
+      "scopeName": "source.ntlc",
+      "path": "./syntaxes/ntlc.tmLanguage.json"
+    }]
+  }
+}
