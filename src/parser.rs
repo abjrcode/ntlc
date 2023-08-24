@@ -46,7 +46,11 @@ impl std::fmt::Display for SyntaxError {
                 )
             }
             SyntaxError::UnexpectedEndOfInput { expected } => {
-                write!(f, "Unexpected <EOF>. expected one of {:?}", expected)
+                write!(
+                    f,
+                    "Unexpected end of stream. expected one of {:?}",
+                    expected
+                )
             }
         }
     }
@@ -269,6 +273,7 @@ where
                 alternative: Box::new(alternative),
             })
         }
+        Some(Token::EOF) => Ok(Term::Empty),
         Some(token) => Err(SyntaxError::UnexpectedToken {
             expected: vec![
                 Token::If,
@@ -298,11 +303,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Term, SyntaxError> {
                 found: token,
             })
         }
-        None => {
-            return Err(SyntaxError::UnexpectedEndOfInput {
-                expected: vec![Token::EOF],
-            })
-        }
+        None => (),
     }
 
     Ok(ast)
@@ -312,6 +313,17 @@ pub fn parse(tokens: Vec<Token>) -> Result<Term, SyntaxError> {
 mod tests_parser_happy_path {
     use super::*;
     use crate::lexer::scan;
+
+    #[test]
+    fn test_parse_empty_program() {
+        let input = "";
+
+        let tokens = scan(input).unwrap();
+
+        let ast = parse(tokens).unwrap();
+
+        assert_eq!(ast, Term::Empty);
+    }
 
     #[test]
     fn test_parse_literal_true() {
