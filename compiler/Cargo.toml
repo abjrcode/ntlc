@@ -5,4 +5,3 @@ version = "0.0.1"
 authors = ["Ibrahim Najjar <abnajjar@hotmail.com>"]
 description = "Neo Typed Lambda Calculus"
 repository = "git@github.com:abjrcode/ntlc.git"
-license-file = "LICENSE"
