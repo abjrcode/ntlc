@@ -58,7 +58,7 @@ impl std::fmt::Display for SyntaxError {
 
 impl std::error::Error for SyntaxError {}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Term {
     Conditional {
         condition: Box<Term>,

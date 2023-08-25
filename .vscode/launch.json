@@ -9,9 +9,10 @@
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--extensionDevelopmentPath=${workspaceRoot}/lsp-extension",
+                "${workspaceRoot}/examples"
             ],
             "outFiles": [
-                "${workspaceRoot}/lsp-extension/out/**/*.js"
+                "${workspaceRoot}/lsp-extension/dist/**/*.js"
             ],
             "preLaunchTask": {
                 "type": "npm",
@@ -21,14 +22,12 @@
                 "SERVER_PATH": "${workspaceRoot}/target/debug/ntlc_lsp"
             }
         },
-        // {
-        //   "type": "node",
-        //   "request": "attach",
-        //   "name": "Attach to Server",
-        //   "port": 6009,
-        //   "restart": true,
-        //   "outFiles": ["${workspaceRoot}/server/out/**/*.js"]
-        // },
+        {
+            "name": "Attach to LSP",
+            "type": "lldb",
+            "request": "attach",
+            "pid": "${command:pickProcess}",
+        },
         {
             "name": "Language Server E2E Test",
             "type": "extensionHost",
@@ -49,7 +48,7 @@
             "name": "Client + Server",
             "configurations": [
                 "NTLC Client",
-                "Attach to Server"
+                "Attach to LSP"
             ]
         }
     ]

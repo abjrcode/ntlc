@@ -35,22 +35,6 @@ let client: LanguageClient;
 // type a = Parameters<>;
 
 export async function activate(context: ExtensionContext) {
-    let disposable = commands.registerCommand("helloworld.helloWorld", async uri => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        const url = Uri.parse('/home/victor/Documents/test-dir/ntlc/another.ntlc')
-        let document = await workspace.openTextDocument(uri);
-        await window.showTextDocument(document);
-
-        // console.log(uri)
-        window.activeTextEditor.document
-        let editor = window.activeTextEditor;
-        let range = new Range(1, 1, 1, 1)
-        editor.selection = new Selection(range.start, range.end);
-    });
-
-    context.subscriptions.push(disposable);
-
     const traceOutputChannel = window.createOutputChannel("NTLC Language Server trace");
     const command = process.env.SERVER_PATH || "ntlc_lsp";
     const run: Executable = {
@@ -80,6 +64,7 @@ export async function activate(context: ExtensionContext) {
         traceOutputChannel,
     };
 
+    traceOutputChannel.appendLine(`Starting NTLC Language Server: [${process.env.SERVER_PATH}]`);
     // Create the language client and start the client.
     client = new LanguageClient("ntlc_lsp", "NTLC language server", serverOptions, clientOptions);
     // activateInlayHints(context);
@@ -92,6 +77,8 @@ export function deactivate(): Thenable<void> | undefined {
     }
     return client.stop();
 }
+
+
 
 export function activateInlayHints(ctx: ExtensionContext) {
     const maybeUpdater = {

@@ -9,9 +9,11 @@
  *        iszero t // zero test
  *        */
 
+use std::fmt::Display;
+
 use crate::parser::Term;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TypedTerm {
     Boolean,
     Integer,
@@ -34,6 +36,24 @@ pub enum TypeError {
         expected: Vec<TypedTerm>,
         found: TypedTerm,
     },
+}
+
+impl Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TypeError::TypeMismatch { expected, found } => {
+                write!(f, "Type error! Expected one of: ")?;
+                for (i, t) in expected.iter().enumerate() {
+                    if i == expected.len() - 1 {
+                        write!(f, "{}", t)?;
+                    } else {
+                        write!(f, "{}, ", t)?;
+                    }
+                }
+                write!(f, " but found: {}", found)
+            }
+        }
+    }
 }
 
 pub fn infer(ast: Term) -> Result<TypedTerm, TypeError> {

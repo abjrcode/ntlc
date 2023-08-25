@@ -6,5 +6,5 @@ node_modules
 out/
 tsconfig.json
 webpack.config.js
-client/**
+lsp-extension/**
 target
