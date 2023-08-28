@@ -13,18 +13,29 @@ use std::fmt::Display;
 
 use crate::parser::Term;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum TypedTerm {
-    Boolean,
-    Integer,
+    Boolean(Term),
+    Integer(Term),
     Void,
+}
+
+impl PartialEq for TypedTerm {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (TypedTerm::Boolean(_), TypedTerm::Boolean(_))
+                | (TypedTerm::Integer(_), TypedTerm::Integer(_))
+                | (TypedTerm::Void, TypedTerm::Void)
+        )
+    }
 }
 
 impl std::fmt::Display for TypedTerm {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            TypedTerm::Boolean => write!(f, "BOOLEAN"),
-            TypedTerm::Integer => write!(f, "INTEGER"),
+            TypedTerm::Boolean(_) => write!(f, "BOOLEAN"),
+            TypedTerm::Integer(_) => write!(f, "INTEGER"),
             TypedTerm::Void => write!(f, "<VOID - EMPTY PROGRAM>"),
         }
     }
@@ -56,37 +67,37 @@ impl Display for TypeError {
     }
 }
 
-pub fn infer(ast: Term) -> Result<TypedTerm, TypeError> {
+pub fn infer(ast: &Term) -> Result<TypedTerm, TypeError> {
     match ast {
-        Term::True => Ok(TypedTerm::Boolean),
-        Term::False => Ok(TypedTerm::Boolean),
-        Term::Zero => Ok(TypedTerm::Integer),
+        Term::True => Ok(TypedTerm::Boolean(Term::True)),
+        Term::False => Ok(TypedTerm::Boolean(Term::False)),
+        Term::Zero => Ok(TypedTerm::Integer(Term::Zero)),
         Term::Successor(t) => {
-            let t = infer(*t)?;
+            let t = infer(t)?;
             match t {
-                TypedTerm::Integer => Ok(TypedTerm::Integer),
+                TypedTerm::Integer(inner_term) => Ok(TypedTerm::Integer(inner_term)),
                 _ => Err(TypeError::TypeMismatch {
-                    expected: vec![TypedTerm::Integer],
+                    expected: vec![TypedTerm::Integer(Term::Empty)],
                     found: t,
                 }),
             }
         }
         Term::Predecessor(t) => {
-            let t = infer(*t)?;
+            let t = infer(t)?;
             match t {
-                TypedTerm::Integer => Ok(TypedTerm::Integer),
+                TypedTerm::Integer(inner_term) => Ok(TypedTerm::Integer(inner_term)),
                 _ => Err(TypeError::TypeMismatch {
-                    expected: vec![TypedTerm::Integer],
+                    expected: vec![TypedTerm::Integer(Term::Empty)],
                     found: t,
                 }),
             }
         }
         Term::IsZero(t) => {
-            let t = infer(*t)?;
+            let t = infer(t)?;
             match t {
-                TypedTerm::Integer => Ok(TypedTerm::Boolean),
+                TypedTerm::Integer(inner_term) => Ok(TypedTerm::Boolean(inner_term)),
                 _ => Err(TypeError::TypeMismatch {
-                    expected: vec![TypedTerm::Integer],
+                    expected: vec![TypedTerm::Integer(Term::Empty)],
                     found: t,
                 }),
             }
@@ -96,23 +107,28 @@ pub fn infer(ast: Term) -> Result<TypedTerm, TypeError> {
             consequence,
             alternative,
         } => {
-            let condition_type = infer(*condition)?;
-            let conseq_type = infer(*consequence)?;
-            let alt_type = infer(*alternative)?;
+            let condition_type = infer(condition)?;
+            let conseq_type = infer(consequence)?;
+            let alt_type = infer(alternative)?;
 
             match condition_type {
-                TypedTerm::Boolean => {
+                TypedTerm::Boolean(_) => {
                     if conseq_type == alt_type {
                         Ok(conseq_type)
                     } else {
+                        let expected_type = match conseq_type {
+                            TypedTerm::Boolean(_) => TypedTerm::Boolean(Term::Empty),
+                            TypedTerm::Integer(_) => TypedTerm::Integer(Term::Empty),
+                            TypedTerm::Void => TypedTerm::Void,
+                        };
                         Err(TypeError::TypeMismatch {
-                            expected: vec![conseq_type],
+                            expected: vec![expected_type],
                             found: alt_type,
                         })
                     }
                 }
                 _ => Err(TypeError::TypeMismatch {
-                    expected: vec![TypedTerm::Boolean],
+                    expected: vec![TypedTerm::Boolean(Term::Empty)],
                     found: condition_type,
                 }),
             }
@@ -133,7 +149,7 @@ mod test_type_checker_happy_path {
         let input = "";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
         assert_eq!(typed_ast, TypedTerm::Void);
     }
@@ -143,9 +159,9 @@ mod test_type_checker_happy_path {
         let input = "true";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Boolean);
+        assert_eq!(typed_ast, TypedTerm::Boolean(Term::True));
     }
 
     #[test]
@@ -153,9 +169,9 @@ mod test_type_checker_happy_path {
         let input = "false";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Boolean);
+        assert_eq!(typed_ast, TypedTerm::Boolean(Term::False));
     }
 
     #[test]
@@ -163,9 +179,9 @@ mod test_type_checker_happy_path {
         let input = "0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Integer);
+        assert_eq!(typed_ast, TypedTerm::Integer(Term::Zero));
     }
 
     #[test]
@@ -173,9 +189,9 @@ mod test_type_checker_happy_path {
         let input = "succ 0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Integer);
+        assert_eq!(typed_ast, TypedTerm::Integer(Term::Zero));
     }
 
     #[test]
@@ -183,9 +199,9 @@ mod test_type_checker_happy_path {
         let input = "pred 0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Integer);
+        assert_eq!(typed_ast, TypedTerm::Integer(Term::Zero));
     }
 
     #[test]
@@ -193,9 +209,9 @@ mod test_type_checker_happy_path {
         let input = "iszero 0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Boolean);
+        assert_eq!(typed_ast, TypedTerm::Boolean(Term::Zero));
     }
 
     #[test]
@@ -203,9 +219,19 @@ mod test_type_checker_happy_path {
         let input = "if true then 0 else 0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Integer);
+        assert_eq!(typed_ast, TypedTerm::Integer(Term::Zero));
+    }
+
+    #[test]
+    fn test_boolean_conditional() {
+        let input = "if true then false else true";
+        let tokens = scan(input).unwrap();
+        let ast = parse(tokens).unwrap();
+        let typed_ast = infer(&ast).unwrap();
+
+        assert_eq!(typed_ast, TypedTerm::Boolean(Term::True));
     }
 
     #[test]
@@ -213,9 +239,9 @@ mod test_type_checker_happy_path {
         let input = "if true then if true then 0 else 0 else 0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Integer);
+        assert_eq!(typed_ast, TypedTerm::Integer(Term::Zero));
     }
 
     #[test]
@@ -223,9 +249,9 @@ mod test_type_checker_happy_path {
         let input = "if iszero 0 then succ 0 else pred 0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast).unwrap();
+        let typed_ast = infer(&ast).unwrap();
 
-        assert_eq!(typed_ast, TypedTerm::Integer);
+        assert_eq!(typed_ast, TypedTerm::Integer(Term::Zero));
     }
 }
 
@@ -241,13 +267,13 @@ mod test_type_checker_unhappy_path {
         let input = "succ true";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast);
+        let typed_ast = infer(&ast);
 
         assert_eq!(
             typed_ast,
             Err(TypeError::TypeMismatch {
-                expected: vec![TypedTerm::Integer],
-                found: TypedTerm::Boolean
+                expected: vec![TypedTerm::Integer(Term::Empty)],
+                found: TypedTerm::Boolean(Term::True)
             })
         );
     }
@@ -257,13 +283,13 @@ mod test_type_checker_unhappy_path {
         let input = "pred true";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast);
+        let typed_ast = infer(&ast);
 
         assert_eq!(
             typed_ast,
             Err(TypeError::TypeMismatch {
-                expected: vec![TypedTerm::Integer],
-                found: TypedTerm::Boolean
+                expected: vec![TypedTerm::Integer(Term::Empty)],
+                found: TypedTerm::Boolean(Term::True)
             })
         );
     }
@@ -273,13 +299,13 @@ mod test_type_checker_unhappy_path {
         let input = "iszero true";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast);
+        let typed_ast = infer(&ast);
 
         assert_eq!(
             typed_ast,
             Err(TypeError::TypeMismatch {
-                expected: vec![TypedTerm::Integer],
-                found: TypedTerm::Boolean
+                expected: vec![TypedTerm::Integer(Term::Empty)],
+                found: TypedTerm::Boolean(Term::True)
             })
         );
     }
@@ -289,13 +315,13 @@ mod test_type_checker_unhappy_path {
         let input = "if true then true else 0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast);
+        let typed_ast = infer(&ast);
 
         assert_eq!(
             typed_ast,
             Err(TypeError::TypeMismatch {
-                expected: vec![TypedTerm::Boolean],
-                found: TypedTerm::Integer
+                expected: vec![TypedTerm::Boolean(Term::Empty)],
+                found: TypedTerm::Integer(Term::Zero)
             })
         );
     }
@@ -305,13 +331,13 @@ mod test_type_checker_unhappy_path {
         let input = "if true then if true then true else 0 else 0";
         let tokens = scan(input).unwrap();
         let ast = parse(tokens).unwrap();
-        let typed_ast = infer(ast);
+        let typed_ast = infer(&ast);
 
         assert_eq!(
             typed_ast,
             Err(TypeError::TypeMismatch {
-                expected: vec![TypedTerm::Boolean],
-                found: TypedTerm::Integer
+                expected: vec![TypedTerm::Boolean(Term::Empty)],
+                found: TypedTerm::Integer(Term::Zero)
             })
         );
     }

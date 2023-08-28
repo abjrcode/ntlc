@@ -70,7 +70,7 @@ impl std::fmt::Display for Token {
             Token::Zero => write!(f, "0"),
             Token::Succ => write!(f, "SUCC"),
             Token::Pred => write!(f, "PRED"),
-            Token::IsZero => write!(f, "IS_ZERO>"),
+            Token::IsZero => write!(f, "IS_ZERO"),
             Token::LeftParenthesis => write!(f, "("),
             Token::RightParenthesis => write!(f, ")"),
             Token::EOF => write!(f, "<EOF>"),

@@ -5,3 +5,6 @@ version = "0.0.1"
 authors = ["Ibrahim Najjar <abnajjar@hotmail.com>"]
 description = "Neo Typed Lambda Calculus Compiler"
 repository = "git@github.com:abjrcode/ntlc.git"
+
+[dependencies]
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm16-0"] }

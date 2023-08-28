@@ -1,1 +1,1 @@
-if iszero(pred(succ(0))) then 0 else pred(0)
+if iszero(pred(succ(0))) then if true then pred(succ(succ(succ(succ(0))))) else pred(pred(0)) else succ(succ(succ(0)))

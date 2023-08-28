@@ -112,8 +112,8 @@ impl LanguageServer for Backend {
                     0,
                     u32::MAX,
                     match v {
-                        ntlcc::type_checker::TypedTerm::Boolean => "BOOL".to_string(),
-                        ntlcc::type_checker::TypedTerm::Integer => "INT".to_string(),
+                        ntlcc::type_checker::TypedTerm::Boolean(_) => "BOOL".to_string(),
+                        ntlcc::type_checker::TypedTerm::Integer(_) => "INT".to_string(),
                         ntlcc::type_checker::TypedTerm::Void => "VOID".to_string(),
                     },
                 )
@@ -196,7 +196,7 @@ impl Backend {
         let parse_result = lex_result.and_then(|tokens| parse(tokens).map_err(|e| e.to_string()));
 
         let type_checker_result = parse_result
-            .and_then(|ast| ntlcc::type_checker::infer(ast.clone()).map_err(|e| e.to_string()));
+            .and_then(|ast| ntlcc::type_checker::infer(&ast).map_err(|e| e.to_string()));
 
         let (ast, errors) = match type_checker_result {
             Ok(ast) => (Some(ast), vec![]),
