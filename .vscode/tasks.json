@@ -4,32 +4,42 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "BuildExtensionTS",
             "type": "npm",
-            "script": "compile",
-            "group": "build",
-            "presentation": {
-                "panel": "dedicated",
-                "reveal": "never"
-            },
-            "problemMatcher": [
-                "$tsc"
-            ]
-        },
-        {
-            "type": "npm",
-            "script": "watch",
-            "isBackground": true,
+            "script": "build",
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "presentation": {
-                "panel": "dedicated",
-                "reveal": "never"
+                "panel": "shared",
+                "reveal": "silent",
+                "revealProblems": "onProblem"
+            },
+            "dependsOn": [
+                "BuildRustLSP"
+            ],
+            "problemMatcher": [
+                "$tsc"
+            ]
+        },
+        {
+            "label": "BuildRustLSP",
+            "type": "cargo",
+            "command": "build",
+            "args": [
+                "--package",
+                "ntlc_lsp"
+            ],
+            "group": "build",
+            "presentation": {
+                "panel": "shared",
+                "reveal": "silent",
+                "revealProblems": "onProblem"
             },
             "problemMatcher": [
-                "$tsc-watch"
-            ]
+                "$rustc"
+            ],
         }
     ]
 }

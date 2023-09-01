@@ -8,5 +8,8 @@ members = [
 ]
 
 default-members = [
-    "compiler"
+    "compiler",
 ]
+
+# Unfortunately, this doesn't work yet. https://github.com/rust-lang/cargo/issues/7290#issuecomment-1030158987
+# default-run = "ntlcc"

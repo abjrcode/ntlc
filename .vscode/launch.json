@@ -14,10 +14,7 @@
             "outFiles": [
                 "${workspaceRoot}/lsp-extension/dist/**/*.js"
             ],
-            "preLaunchTask": {
-                "type": "npm",
-                "script": "watch"
-            },
+            "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "SERVER_PATH": "${workspaceRoot}/target/debug/ntlc_lsp"
             }
