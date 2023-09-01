@@ -18,11 +18,11 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "vadimcn.vscode-lldb",
-                "rust-lang.rust-analyzer",
-                "dbaeumer.vscode-eslint",
-                "EditorConfig.EditorConfig"
-            ]
+				"vadimcn.vscode-lldb",
+				"rust-lang.rust-analyzer",
+				"EditorConfig.EditorConfig",
+				"esbenp.prettier-vscode"
+			]
         }
     }
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
