@@ -110,5 +110,5 @@ fn main() {
         .arg("bin/good")
         .spawn()
         .and_then(|x| x.wait_with_output())
-        .expect("Failed to compile the generated LLVM IR");
+        .unwrap();
 }

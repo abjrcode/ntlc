@@ -1,11 +1,12 @@
 [workspace]
 
+resolver = "2"
+
 members = [
     "compiler",
     "lsp-server",
 ]
 
 default-members = [
-    "compiler",
-    "lsp-server",
+    "compiler"
 ]
