@@ -4,27 +4,11 @@
  * ------------------------------------------------------------------------------------------ */
 
 import {
-    languages,
     workspace,
-    EventEmitter,
-    ExtensionContext,
     window,
-    InlayHintsProvider,
-    TextDocument,
-    CancellationToken,
-    Range,
-    InlayHint,
-    TextDocumentChangeEvent,
-    ProviderResult,
-    commands,
-    WorkspaceEdit,
-    TextEdit,
-    Selection,
-    Uri,
 } from "vscode";
 
 import {
-    Disposable,
     Executable,
     LanguageClient,
     LanguageClientOptions,
@@ -32,9 +16,8 @@ import {
 } from "vscode-languageclient/node";
 
 let client: LanguageClient;
-// type a = Parameters<>;
 
-export async function activate(context: ExtensionContext) {
+export async function activate() {
     const traceOutputChannel = window.createOutputChannel("NTLC Language Server trace");
     const command = process.env.SERVER_PATH || "ntlc_lsp";
     const run: Executable = {
@@ -42,7 +25,6 @@ export async function activate(context: ExtensionContext) {
         options: {
             env: {
                 ...process.env,
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 RUST_LOG: "debug",
             },
         },
@@ -67,7 +49,6 @@ export async function activate(context: ExtensionContext) {
     traceOutputChannel.appendLine(`Starting NTLC Language Server: [${process.env.SERVER_PATH}]`);
     // Create the language client and start the client.
     client = new LanguageClient("ntlc_lsp", "NTLC language server", serverOptions, clientOptions);
-    // activateInlayHints(context);
     client.start();
 }
 
@@ -76,84 +57,4 @@ export function deactivate(): Thenable<void> | undefined {
         return undefined;
     }
     return client.stop();
-}
-
-
-
-export function activateInlayHints(ctx: ExtensionContext) {
-    const maybeUpdater = {
-        hintsProvider: null as Disposable | null,
-        updateHintsEventEmitter: new EventEmitter<void>(),
-
-        async onConfigChange() {
-            this.dispose();
-
-            const event = this.updateHintsEventEmitter.event;
-            // this.hintsProvider = languages.registerInlayHintsProvider(
-            //   { scheme: "file", language: "ntlc" },
-            //   // new (class implements InlayHintsProvider {
-            //   //   onDidChangeInlayHints = event;
-            //   //   resolveInlayHint(hint: InlayHint, token: CancellationToken): ProviderResult<InlayHint> {
-            //   //     const ret = {
-            //   //       label: hint.label,
-            //   //       ...hint,
-            //   //     };
-            //   //     return ret;
-            //   //   }
-            //   //   async provideInlayHints(
-            //   //     document: TextDocument,
-            //   //     range: Range,
-            //   //     token: CancellationToken
-            //   //   ): Promise<InlayHint[]> {
-            //   //     const hints = (await client
-            //   //       .sendRequest("custom/inlay_hint", { path: document.uri.toString() })
-            //   //       .catch(err => null)) as [number, number, string][];
-            //   //     if (hints == null) {
-            //   //       return [];
-            //   //     } else {
-            //   //       return hints.map(item => {
-            //   //         const [start, end, label] = item;
-            //   //         let startPosition = document.positionAt(start);
-            //   //         let endPosition = document.positionAt(end);
-            //   //         return {
-            //   //           position: endPosition,
-            //   //           paddingLeft: true,
-            //   //           label: [
-            //   //             {
-            //   //               value: `${label}`,
-            //   //               // location: {
-            //   //               //   uri: document.uri,
-            //   //               //   range: new Range(1, 0, 1, 0)
-            //   //               // }
-            //   //               command: {
-            //   //                 title: "hello world",
-            //   //                 command: "helloworld.helloWorld",
-            //   //                 arguments: [document.uri],
-            //   //               },
-            //   //             },
-            //   //           ],
-            //   //         };
-            //   //       });
-            //   //     }
-            //   //   }
-            //   // })()
-            // );
-        },
-
-        onDidChangeTextDocument({ contentChanges, document }: TextDocumentChangeEvent) {
-            // debugger
-            // this.updateHintsEventEmitter.fire();
-        },
-
-        dispose() {
-            this.hintsProvider?.dispose();
-            this.hintsProvider = null;
-            this.updateHintsEventEmitter.dispose();
-        },
-    };
-
-    workspace.onDidChangeConfiguration(maybeUpdater.onConfigChange, maybeUpdater, ctx.subscriptions);
-    workspace.onDidChangeTextDocument(maybeUpdater.onDidChangeTextDocument, maybeUpdater, ctx.subscriptions);
-
-    maybeUpdater.onConfigChange().catch(console.error);
 }

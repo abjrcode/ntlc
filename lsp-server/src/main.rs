@@ -1,9 +1,6 @@
-use std::collections::HashMap;
-
 use dashmap::DashMap;
 use ntlcc::parser::parse;
 use ntlcc::type_checker::TypedTerm;
-use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::notification::Notification;
@@ -14,7 +11,6 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 struct Backend {
     client: Client,
     ast_map: DashMap<String, TypedTerm>,
-    document_map: DashMap<String, Rope>,
 }
 
 #[tower_lsp::async_trait]
@@ -97,54 +93,52 @@ impl LanguageServer for Backend {
 
         let uri = &params.text_document.uri;
 
-        let mut hashmap = HashMap::new();
-
         if let Some(ast) = self.ast_map.get(uri.as_str()) {
-            let k = ast.key().clone();
-            let v = ast.value().clone();
-            hashmap.insert(k, v);
+            let term = [ast.value()];
+
+            let inlay_hint_list = term
+                .iter()
+                .map(|v| {
+                    (
+                        0,
+                        u32::MAX,
+                        match v {
+                            ntlcc::type_checker::TypedTerm::Boolean(_) => "BOOL".to_string(),
+                            ntlcc::type_checker::TypedTerm::Integer(_) => "INT".to_string(),
+                            ntlcc::type_checker::TypedTerm::Void => "VOID".to_string(),
+                        },
+                    )
+                })
+                .map(|item| InlayHint {
+                    text_edits: None,
+                    tooltip: None,
+                    kind: Some(InlayHintKind::TYPE),
+                    padding_left: None,
+                    padding_right: None,
+                    data: None,
+                    position: Position {
+                        line: 0,
+                        character: item.1,
+                    },
+                    label: InlayHintLabel::LabelParts(vec![InlayHintLabelPart {
+                        value: item.2,
+                        tooltip: None,
+                        location: Some(Location {
+                            uri: params.text_document.uri.clone(),
+                            range: Range {
+                                start: Position::new(0, 0),
+                                end: Position::new(0, u32::MAX),
+                            },
+                        }),
+                        command: None,
+                    }]),
+                })
+                .collect::<Vec<_>>();
+
+            return Ok(Some(inlay_hint_list));
         }
 
-        let inlay_hint_list = hashmap
-            .into_values()
-            .map(|v| {
-                (
-                    0,
-                    u32::MAX,
-                    match v {
-                        ntlcc::type_checker::TypedTerm::Boolean(_) => "BOOL".to_string(),
-                        ntlcc::type_checker::TypedTerm::Integer(_) => "INT".to_string(),
-                        ntlcc::type_checker::TypedTerm::Void => "VOID".to_string(),
-                    },
-                )
-            })
-            .map(|item| InlayHint {
-                text_edits: None,
-                tooltip: None,
-                kind: Some(InlayHintKind::TYPE),
-                padding_left: None,
-                padding_right: None,
-                data: None,
-                position: Position {
-                    line: 0,
-                    character: item.1,
-                },
-                label: InlayHintLabel::LabelParts(vec![InlayHintLabelPart {
-                    value: item.2,
-                    tooltip: None,
-                    location: Some(Location {
-                        uri: params.text_document.uri.clone(),
-                        range: Range {
-                            start: Position::new(0, 0),
-                            end: Position::new(0, u32::MAX),
-                        },
-                    }),
-                    command: None,
-                }]),
-            })
-            .collect::<Vec<_>>();
-
-        Ok(Some(inlay_hint_list))
+        Ok(None)
     }
 
     async fn did_change_configuration(&self, _: DidChangeConfigurationParams) {
@@ -185,11 +179,6 @@ struct TextDocumentItem {
 impl Backend {
     async fn on_change(&self, params: TextDocumentItem) {
         let program_source = params.text.trim();
-
-        let rope = ropey::Rope::from_str(program_source);
-
-        self.document_map
-            .insert(params.uri.to_string(), rope.clone());
 
         let lex_result = ntlcc::lexer::scan(program_source).map_err(|e| e.to_string());
 
@@ -242,7 +231,6 @@ async fn main() {
     let (service, socket) = LspService::build(|client| Backend {
         client,
         ast_map: DashMap::new(),
-        document_map: DashMap::new(),
     })
     .finish();
 
