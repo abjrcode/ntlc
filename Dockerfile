@@ -38,7 +38,7 @@ RUN wget https://apt.llvm.org/llvm.sh && \
 COPY . .
 
 # NPM install
-# RUN npm install
+RUN npm install
 
 # Build
-# RUN cargo build
+RUN cargo build

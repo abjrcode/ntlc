@@ -25,28 +25,5 @@
             "request": "attach",
             "pid": "${command:pickProcess}",
         },
-        {
-            "name": "Language Server E2E Test",
-            "type": "extensionHost",
-            "request": "launch",
-            "runtimeExecutable": "${execPath}",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceRoot}/lsp-extension",
-                "--extensionTestsPath=${workspaceRoot}/lsp-extension/out/test/index",
-                "${workspaceRoot}/lsp-extension/testFixture"
-            ],
-            "outFiles": [
-                "${workspaceRoot}/lsp-extension/out/test/**/*.js"
-            ]
-        }
     ],
-    "compounds": [
-        {
-            "name": "Client + Server",
-            "configurations": [
-                "NTLC Client",
-                "Attach to LSP"
-            ]
-        }
-    ]
 }
