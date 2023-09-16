@@ -1,3 +1,7 @@
+/**
+ * This code was adopted from example code from the tower-lsp crate.
+ * https://github.com/ebkalderon/tower-lsp
+ */
 use dashmap::DashMap;
 use ntlcc::parser::parse;
 use ntlcc::type_checker::TypedTerm;
@@ -51,7 +55,7 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         self.client
-            .log_message(MessageType::INFO, "mofo file opened!")
+            .log_message(MessageType::INFO, "file opened!")
             .await;
 
         self.on_change(TextDocumentItem {

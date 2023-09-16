@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::vec::Vec;
 
+// I keep a copy of the grammar here for reference
 /*
  *    t ::= // terms
  *        true  // constant true
@@ -23,8 +24,22 @@ static KEYWORD_ZERO: &str = "0";
 static KEYWORD_SUCC: &str = "succ";
 static KEYWORD_PRED: &str = "pred";
 
+// clippy is Rust's linter and we are just telling it to be quite
+// These are similar to annotations, decorators or metadata in other programming languages
 #[allow(clippy::upper_case_acronyms)]
+// In Rust one can ask the compiler to implement certain interfaces for
+// a type by using the `derive` keyword. In this case we are asking the
+// compiler to implement the `PartialEq` (Partial Equality) interface for the `Token` type
+// which is used to compare two values of the same type for equality using ==.
 #[derive(PartialEq)]
+/*
+ `enum` is, roughly speaking, similar to how unions work in TypeScript where you can say:
+ `type Token = True | False`
+ And so token can be either True or False
+ Notice that `True` and `False` are not the literal boolean values `true` and `false` but rather the names of the variants of the enum.
+ They are types in their own right. You can have any type you want as a variant of an enum.
+ Tokens are the output of the lexer and are the input of the parser.
+*/
 pub enum Token {
     True,
     False,
@@ -40,8 +55,22 @@ pub enum Token {
     EOF,
 }
 
+/**
+ * Rust doesn't have classes but rather structs which are similar to classes in other languages.
+ * This is how one implements traits (which roughly correspond to interfaces in other languages)
+ * for a struct.
+ * Essentially we are saying the Token type implements the Debug trait.
+ * The Debug trait allows us to print the value of a Token when used in a format string.
+ * It is similar in that regard to how one might override `toString` in Java.
+ */
 impl Debug for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(
+        &self, /* similar to `this` in object oriented languages */
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
+        /*
+         * I hope this very readable and self explanatory
+         */
         match self {
             Token::True => write!(f, "TRUE"),
             Token::False => write!(f, "FALSE"),
@@ -59,6 +88,10 @@ impl Debug for Token {
     }
 }
 
+/**
+ * While the `Debug` trait is used for debugging purposes, the `Display` trait is used for printing
+ * a human readable or nice string representation of a value.
+ */
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -79,6 +112,9 @@ impl std::fmt::Display for Token {
 }
 
 #[derive(PartialEq)]
+/*
+* We use an enum to represent the different kind of errors the lexer could run into
+*/
 pub enum LexingError {
     UnrecognizedToken {
         found: String,
@@ -203,21 +239,82 @@ impl std::fmt::Debug for LexingError {
     }
 }
 
+/**
+ * The `Error` trait is like a marker interface
+ * It is just tells the compiler that `LexingError` is, well, kinda of an error
+ */
 impl Error for LexingError {}
 
+/**
+ * This is the heart of the lexer. It basically takes the NTLC program source code
+ * as input and returns a vector of tokens of type `Token` as output.
+ * It iterates of the input characters from left to right and tries to match them
+ * against the knowns tokens of the language.
+ * Most of the time, the lexer is actually part of the parser module and is implemented
+ * as a streaming lexer. That is, it is implemented as a function that returns the next
+ * token only when asked for explicitly by the parser and not all at once.
+ * This is done to avoid having to read the entire input into memory at once.
+ * Also, when working within a text editor or IDE, those tools can send you incomplete
+ * pieces of code to avoid resending the entire source file over and over again.
+ * We will see this when we are working on the language server.
+ * You might see the `&str` type and wonder what it is. It is just a reference to a string.
+ * Or in other words a readonly reference to a string. This avoids copying the string around
+ * in memory. Don't worry about it too much.
+ * The `Result<>` type is a probably implemented as an `enum` under te hood. It says this function
+ * either returns a vector of tokens or an error
+ * This is a concept from functional programming and it's very idiomatic to see the Result<>
+ * type all over the place in Rust code.
+ * If you worked with a language that uses exceptions, this might be feel strange at first
+ * but, I personally think it is way cleaner to explicitly state that your function might
+ * return an error. This reminds me to some extent of checked exceptions in Java but better.
+ */
 pub fn scan(input: &str) -> Result<Vec<Token>, LexingError> {
     let mut tokens: Vec<Token> = Vec::new();
 
+    /*
+    This line might seem to be doing a bit of magic but essentially it is just a convenient
+    way to line up the input with itself shifted by one character, essentially giving us each character
+    and the one following it as a pair (char, next_char). Let me demonstrate:
+    let's say that the input is "succ(0)" this will give us the following:
+    s u c c ( 0 )
+    u c c ( 0 ) \0
+
+    and as pairs comes out as:
+    [('s', 'u'), ('u', 'c'), ('c', 'c'), ('c', '('), ('(', '0'), ('0', ')'), (')', '\0')]
+
+    This is handy because a lot of the time we need to "lookahead" when we are scanning the input
+    to decide what the next token is. Keep reading.
+    */
     let mut chars = input
         .chars()
         .zip(input.chars().skip(1).chain(['\0']))
         .peekable();
 
+    // We are tracking the line number although the lexer doesn't support multiple lines of input
+    // This is useful for error reporting. The same with the index which is the column number
+    // within the input string
     let line = 1usize;
     let mut index = 0usize;
 
+    // This is the main loop of the lexer. It iterates over the input characters
+    // and tries to match them against the known tokens of the language
+    // The `let Some(&(c, next)) = chars.peek()` is known as a pattern match
+    // It is also something that is very common in functional languages
+    // it is similar to simple variable assignments and destructuring in JavaScript
+    // or Python but more powerful
+    // Here we are saying, if there is a next character in the input, assign it to `c`
+    // and assign the character right after it to `next`
     while let Some(&(c, next)) = chars.peek() {
+        // This is the main match statement. It is similar to a switch statement in other languages
+        // but more powerful. It allows you to match on more than just the value of a variable
+        // now, the code basically iterates and does the following:
         match c {
+            // if the current character is 't' then check the next character
+            // because in our grammar, that are two tokens that start with 't'
+            // `true` and `then` and we need to know which one it is
+            // if the `t` is followed by an `r` then it is `true` otherwise it is `then`
+            // and we can move on to the next token
+            // the reset of the rules work in a similar way
             't' => match next {
                 'r' => {
                     index += consume(&mut chars, KEYWORD_TRUE, line, index)?;
@@ -361,10 +458,17 @@ pub fn scan(input: &str) -> Result<Vec<Token>, LexingError> {
                 index += 1;
                 tokens.push(Token::RightParenthesis);
             }
+            /*
+            We don't care about whitespace characters so we just skip them
+            */
             '\t' | ' ' => {
                 chars.next();
                 index += 1;
             }
+            /*
+            This is the case where we don't recognize the current character
+            as part of the language so we just error
+            */
             ut => {
                 return Err(LexingError::UnrecognizedToken {
                     found: ut.to_string(),
@@ -380,6 +484,10 @@ pub fn scan(input: &str) -> Result<Vec<Token>, LexingError> {
     Ok(tokens)
 }
 
+/*
+This is a helper function that consumes a literal from the input
+It is used to match keywords and other literals in the language
+ */
 fn consume<T>(
     input: &mut T,
     literal: &'static str,
@@ -418,6 +526,14 @@ where
     Ok(literal.len())
 }
 
+/**
+ * This is another helper function that is used to match a character against a list of characters
+ * Sometimes we might expecting one character or another so this function tries to do that
+ * and if it cannot it errors
+ * For example, let's say our input program is `pre(0)`
+ * The `scan` function sees a `p` and tries to match it against the `pred` keyword
+ * but when it reaches `e` it cannot find `d` so it errors
+ */
 fn match_one_of(
     input: Option<char>,
     literals: &[char],
