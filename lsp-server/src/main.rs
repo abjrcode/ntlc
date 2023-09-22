@@ -11,14 +11,57 @@ use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
+/**
+ * There is many Rust constructs that are new in this file.
+ * Ignore them. I didn't understand every bit when I started
+ *
+ * Essentially Rust doesn't support async/await completely on its own
+ * You need a runtime and that runtime is provided by Tokio (https://tokio.rs/)
+ * in this project
+ *
+ * TowerLSP is a Rust library that depends on Tokio
+ *
+ * What does it do you might ask?
+ *
+ * Essentially language server protocol is a client-server protocol
+ * that allows you to write a language server that can be used by
+ * any editor that supports the protocol
+ *
+ * The protocol is defined here: https://microsoft.github.io/language-server-protocol/specifications/specification-current/
+ * It uses JSON RPC to exchange messages between the client and the server
+ * Just like how the web uses HTTP to exchange messages between the browser and the server
+ *
+ * So instead of us worrying about implementing the protocol and its details
+ * we can just use TowerLSP to do that for us
+ *
+ * TowerLSP leaves "blanks" for us to fill in.
+ * Like what to do when the code editor sends us a message
+ * saying the user hovered over a piece of code
+ *
+ * Or what to do when the code editor sends us a message
+ * saying user opened a file
+ *
+ * You can see the list of all supported messages that the code editor can send
+ * in the protocol documentation
+ */
+
 #[derive(Debug)]
 struct Backend {
+    // We use the client to talk back to the editor/IDE
     client: Client,
+
+    // This is a map that maps a file path to its AST
+    // We use this to get the AST of a file when the editor
+    // asks us for inlay or diagnostics
     ast_map: DashMap<String, TypedTerm>,
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
+    /*
+        Here we initialize the language server
+        We tell the editor what features the language server supports
+    */
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
@@ -87,6 +130,10 @@ impl LanguageServer for Backend {
             .await;
     }
 
+    /**
+     * We are using inlay hints to show the type of our entire
+     * NTLC program
+     */
     async fn inlay_hint(
         &self,
         params: tower_lsp::lsp_types::InlayHintParams,
@@ -181,6 +228,18 @@ struct TextDocumentItem {
 }
 
 impl Backend {
+    /**
+     * Whenever a file is opened, changed, saved, etc by the user
+     * the editor sends us a message
+     *
+     * We use this message to to lex, parse, and type check the program
+     * and then publish the diagnostics to the editor
+     *
+     * We also store the AST of the program in the ast_map
+     * This is a performance optimization
+     *
+     * We don't really need this in NTLC because our programs are small
+     */
     async fn on_change(&self, params: TextDocumentItem) {
         let program_source = params.text.trim();
 

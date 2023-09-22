@@ -89,6 +89,10 @@ fn main() {
     println!();
     println!();
 
+    /*
+     * Evaluate our NTLC program in memory using LLVM JIT Execution Engine.
+     * This is just for demonstration purposes.
+     */
     let execution_engine = module
         .create_jit_execution_engine(OptimizationLevel::None)
         .unwrap();
@@ -104,6 +108,9 @@ fn main() {
 
     module.write_bitcode_to_path(path::Path::new("bin/good.bc"));
 
+    /*
+     Invoke the Clang compiler to generate a native executable file.
+    */
     std::process::Command::new("clang")
         .arg("bin/good.bc")
         .arg("-o")

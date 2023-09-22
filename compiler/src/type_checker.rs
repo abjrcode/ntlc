@@ -14,12 +14,28 @@ use std::fmt::Display;
 use crate::parser::Term;
 
 #[derive(Debug, Clone)]
+/**
+ * This is like a Typed AST.
+ *
+ * There are two real possibilities for an NTLC program.
+ * The whole program either evaluates to a boolean or an integer.
+ * Check the grammar above to see why this is the case.
+ *
+ * `Void` is just a convenience to represent an empty program.
+ */
 pub enum TypedTerm {
     Boolean(Term),
     Integer(Term),
     Void,
 }
 
+/**
+ * We implement equality manually for `TypedTerm` because we want to
+ * ignore the inner term when comparing.
+ *
+ * If two expressions are of the same type, then they are equal.
+ * We don't care about the inner term.
+ */
 impl PartialEq for TypedTerm {
     fn eq(&self, other: &Self) -> bool {
         matches!(
@@ -67,11 +83,32 @@ impl Display for TypeError {
     }
 }
 
+/**
+ * This is the entry point of the type checker.
+ * Although I called it `infer` it doesn't really do any inference.
+ * The reason being that type inference is actually not needed
+ *
+ * For our grammar since we know the type of everything.
+ * There is no inference needed.
+ *
+ * It just checks if the program is "well typed".
+ * "Well typed": means you are not doing things like
+ * iszero true or if 0 then true else false.
+ *
+ * It uses the same algorithm as recursive descent
+ * traversing the AST and checking the types of the nodes.
+ */
 pub fn infer(ast: &Term) -> Result<TypedTerm, TypeError> {
     match ast {
+        // The terminals which are also the base cases of the recursion
+        // are the easiest to type check.
         Term::True => Ok(TypedTerm::Boolean(Term::True)),
         Term::False => Ok(TypedTerm::Boolean(Term::False)),
         Term::Zero => Ok(TypedTerm::Integer(Term::Zero)),
+        /*
+           We need to make sure that the inner term of the successor
+           is an integer.
+        */
         Term::Successor(t) => {
             let t = infer(t)?;
             match t {
@@ -111,6 +148,22 @@ pub fn infer(ast: &Term) -> Result<TypedTerm, TypeError> {
             let conseq_type = infer(consequence)?;
             let alt_type = infer(alternative)?;
 
+            /*
+             * For the conditional we need to make sure that the condition
+             * is a boolean and that the consequence and alternative are of the same type.
+             *
+             * This is to avoid things like:
+             * if true then 0 else false
+             *
+             * While there is nothing wrong with the above program
+             * We don't have a way to represent it in our grammar
+             * or in our type system.
+             *
+             * The resulting type would be what is typically known
+             * as a union type.
+             *
+             * So we simply disallow it in our case
+             */
             match condition_type {
                 TypedTerm::Boolean(_) => {
                     if conseq_type == alt_type {

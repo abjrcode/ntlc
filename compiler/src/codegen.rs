@@ -4,6 +4,28 @@ use inkwell::module::{Linkage, Module};
 
 use crate::parser::Term;
 
+/**
+ * `MainFunc` represents how our NTLC program
+ * looks like after it's compiled to LLVM IR.
+ *
+ * It is a function that takes no arguments
+ * and returns an integer.
+ *
+ * You might think, hey where the the boolean
+ * return value?
+ *
+ * Well, on the OS level there is no such thing
+ * Everything is represented as numbers.
+ *
+ * So we will map boolean values like true and false to 0 and 1 respectively.
+ *
+ * That does make it hard to distinguish between booleans and integers
+ * such as when the program returns an integer 1 but since
+ * our language is simple we don't need to worry about that.
+ *
+ * I mean after all this is just a shortcut not to link with libc
+ * or provide a way to print to the console.
+ */
 pub type MainFunc = unsafe extern "C" fn() -> i32;
 
 #[derive(Debug)]
@@ -11,6 +33,14 @@ pub enum CodegenError {
     LlvmNative(String),
 }
 
+/**
+ * This module contains the internals of the code generator.
+ *
+ * I chose to wrap things in an isolated module because the code generator
+ * needs to keep track of some state as part of translation process.
+ *
+ * This way consumers of the "codegen" module don't need to worry about
+ */
 mod internals {
     use inkwell::values::IntValue;
 
@@ -18,27 +48,57 @@ mod internals {
 
     use super::*;
 
+    /**
+     * `context`, `module` and `builder` are the state that the code generator
+     * needs to keep track of.
+     *
+     * These are constructs provided by the LLVM library.
+     */
     pub struct CodeGenerator<'ctx> {
         pub context: &'ctx Context,
         pub module: Module<'ctx>,
         pub builder: Builder<'ctx>,
     }
 
+    /**
+     * Here we are implementing the actual
+     * functionality of the code generator
+     *
+     * These functions appear in an impl block
+     * which makes them methods of the CodeGenerator struct
+     * defined above.
+     */
     impl<'ctx> CodeGenerator<'ctx> {
+        /**
+         * This function adds the builtin `izzero` function to the module.
+         */
         fn add_builtin_izzero(&self) -> Result<(), CodegenError> {
+            // This is a representation of the integer type in LLVM IR
             let i32_type = self.context.i32_type();
+
+            // This is a representation of the boolean type in LLVM IR
             let bool_type = self.context.bool_type();
 
+            // This is the type of the `izzero` function
+            // It takes an integer and returns a boolean
             let iz_zero_fn_type = bool_type.fn_type(&[i32_type.into()], false);
 
+            // Now we add the function declaration to the module
+            // We give it the name "izzero"
             let iz_zero_fn =
                 self.module
                     .add_function("izzero", iz_zero_fn_type, Some(Linkage::Internal));
 
+            // Now we add a basic block to the function
+            // A basic block is a sequence of instructions
+            // that execute sequentially
+            // This is where we implement our function's body
             let basic_block = self.context.append_basic_block(iz_zero_fn, "entry");
 
             self.builder.position_at_end(basic_block);
 
+            // Now we get the value of the first parameter of the function
+            // which is the integer we want to check if it's zero
             let x = iz_zero_fn
                 .get_nth_param(0)
                 .ok_or(CodegenError::LlvmNative(
@@ -46,17 +106,25 @@ mod internals {
                 ))?
                 .into_int_value();
 
+            // Now we create a constant integer with the value 0
             let zero = i32_type.const_int(0, false);
 
+            // Now we compare the value of the parameter with the constant zero
             let iz_zero =
                 self.builder
                     .build_int_compare(inkwell::IntPredicate::EQ, x, zero, "iz_zero_cmp");
 
+            // Now we return the result of the comparison
             self.builder.build_return(Some(&iz_zero));
 
             Ok(())
         }
 
+        /**
+         * This function adds the builtin `pred` function to the module.
+         *
+         * It follows a similar construction to the `izzero` function.
+         */
         fn add_builtin_pred(&self) -> Result<(), CodegenError> {
             let i32_type = self.context.i32_type();
 
@@ -86,6 +154,11 @@ mod internals {
             Ok(())
         }
 
+        /**
+         * This function adds the builtin `succ` function to the module.
+         *
+         * It follows a similar construction to the `izzero` function.
+         */
         fn add_builtin_succ(&self) -> Result<(), CodegenError> {
             let i32_type = self.context.i32_type();
 
@@ -115,6 +188,14 @@ mod internals {
             Ok(())
         }
 
+        /**
+         * new is similar to constructors in Object Oriented Languages
+         * It initializes a new LLVM module and injects our builtin
+         * functions and constants into it.
+         *
+         * LLVM modules are the smallest unit of compilation.
+         * You can think of them as a single source file in C or Rust.
+         */
         pub fn new(ctx: &'ctx Context, module_name: &str) -> Result<Self, CodegenError> {
             let module = ctx.create_module(module_name);
 
@@ -131,8 +212,18 @@ mod internals {
             Ok(code_generator)
         }
 
+        /**
+         * This is the main function of the code generator.
+         * It takes an AST and compiles it to LLVM IR.
+         *
+         * It does it the same way as we did we the type checker
+         * by recursively traversing the AST and compiling each node
+         */
         fn compile_internal(&self, ast: Term) -> IntValue {
             match ast {
+                /*
+                 * Terminal nodes map to simple constants in LLVM
+                 */
                 Term::True => {
                     let bool_type = self.context.bool_type();
                     bool_type.const_int(1, false)
@@ -145,7 +236,14 @@ mod internals {
                     let int_type = self.context.i32_type();
                     int_type.const_zero()
                 }
+                /*
+                 * Here we are not building the `succ` function
+                 * Remember, we already added it as a builtin function
+                 *
+                 * This is how we call a function in LLVM IR
+                 */
                 Term::Successor(inner_term) => {
+                    // First we get the function from the module
                     let succ_fn = self
                         .module
                         .get_function("succ")
@@ -154,16 +252,22 @@ mod internals {
                         ))
                         .unwrap();
 
+                    // Then we compile the inner term
+                    // which could be any valid NTLC term
                     let succ_value = self.compile_internal(*inner_term);
 
+                    // Then we call the function with the value of the inner term
                     let succ_call =
                         self.builder
                             .build_call(succ_fn, &[succ_value.into()], "succ_call");
 
+                    // Then we get the return value of the function call
                     let succ_call_value = succ_call.try_as_basic_value().left().unwrap();
 
+                    // Then we return the value
                     succ_call_value.into_int_value()
                 }
+                // Same as above
                 Term::Predecessor(inner_term) => {
                     let pred_fn = self
                         .module
@@ -183,6 +287,7 @@ mod internals {
 
                     pred_call_value.into_int_value()
                 }
+                // Same as above
                 Term::IsZero(inner_term) => {
                     let iz_zero_fn = self
                         .module
@@ -204,6 +309,16 @@ mod internals {
 
                     iz_zero_call_value.into_int_value()
                 }
+                /*
+                 * Conditionals are a bit more involved
+                 * If you have seen goto statements before they might seem familiar
+                 *
+                 * Essentially we are creating a "label" for each possible
+                 * branch of the conditional.
+                 *
+                 * And then we use jump instructions to execute one or the other
+                 * depending on the value of the condition.
+                 */
                 Term::Conditional {
                     condition,
                     consequence,
@@ -270,6 +385,11 @@ mod internals {
 
                     self.builder.position_at_end(merge_block);
 
+                    /*
+                       phi is a special construction in LLVM
+                       that tells us which branch of the conditional
+                       was executed to get us to this point
+                    */
                     let phi = self.builder.build_phi(self.context.i32_type(), "phi");
 
                     phi.add_incoming(&[
@@ -286,6 +406,17 @@ mod internals {
             }
         }
 
+        /*
+         * This is the public interface of the code generator.
+         * It takes an AST and compiles it to LLVM IR.
+         *
+         * We basically we just create a main function
+         * and we put compile our NTLC program to be the body
+         * of that function
+         *
+         * The result of evaluating the NTLC program is the return value
+         * of the main function
+         */
         pub fn compile(&self, ast: Term) -> Result<(), CodegenError> {
             let i32_type = self.context.i32_type();
             let main_fn_type = i32_type.fn_type(&[], false);
@@ -307,6 +438,13 @@ mod internals {
     }
 }
 
+/**
+ * This is the only function exported from the code generator
+ * Check `main.rs` to see how it's used.
+ *
+ * As you can see, it delegates all of its work to the code generator module
+ * defined above.
+ */
 pub fn generate(context: &Context, ast: Term) -> Result<Module<'_>, CodegenError> {
     let codegen = internals::CodeGenerator::new(context, "main")?;
 
