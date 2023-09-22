@@ -59,6 +59,15 @@ impl std::fmt::Display for SyntaxError {
 impl std::error::Error for SyntaxError {}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+/**
+ * This is our Abstract Syntax Tree (AST)
+ * It is a recursive data structure that represents the program
+ * Ignore those `Box<>` for now, they are just there to make the
+ * Rust borrow checker happy.
+ *
+ * This should be self explanatory as it literally
+ * follows the structure of our grammar.
+*/
 pub enum Term {
     Conditional {
         condition: Box<Term>,
@@ -161,14 +170,27 @@ where
     }
 }
 
+/**
+ * This is the recursive function that does most of the work
+ * It essentially follows the structure of our grammar
+ */
 fn parse_term<T>(tokens: &mut Peekable<T>) -> Result<Term, SyntaxError>
 where
     T: Iterator<Item = Token>,
 {
+    // Get the next token
     match tokens.next() {
+        // If it is `true` then our AST contains a single node `Term::True`
         Some(Token::True) => Ok(Term::True),
+        // If it is `false` then our AST contains a single node `Term::False`
         Some(Token::False) => Ok(Term::False),
         Some(Token::Zero) => Ok(Term::Zero),
+        /*
+         * If it is `iszero` then we need to check if there is a left parenthesis
+         * as our grammar allows both `iszero 0` and `iszero(TERM)`
+         *
+         * The same applies for other builtin functions
+         */
         Some(Token::IsZero) => {
             let match_right = match tokens.peek() {
                 Some(&Token::LeftParenthesis) => {
@@ -178,8 +200,13 @@ where
                 _ => false,
             };
 
+            /*
+               This is the heart of how recursive descent works
+               We call `parse_term()` again to parse the inner expression
+            */
             let inner_expr = parse_term(tokens)?;
 
+            // If we matched a left parenthesis, we need to match a right parenthesis
             if match_right {
                 match_right_parenthesis(tokens)?;
             }
@@ -220,6 +247,11 @@ where
 
             Ok(Term::Predecessor(Box::new(inner_expr)))
         }
+        /*
+           If terms might seem more complex but they follow the same
+           pattern of invoking `parse_term()` recursively
+
+        */
         Some(Token::If) => {
             let match_right = match tokens.peek() {
                 Some(&Token::LeftParenthesis) => {
@@ -290,6 +322,19 @@ where
     }
 }
 
+/**
+ * Entry point of our parser
+ * This is the implementation of the Recursive Descent algorithm
+ *
+ * It takes a vector of tokens and returns a Term (AST) or a SyntaxError
+ * if the program is not valid.
+ *
+ * It delegates most of the work to `parse_term()` which is a recursive function
+ *
+ * After `parse_term()` returns, we check if there are any tokens left in the stream
+ * At this stage, there must be none left otherwise the program is not valid.
+ * For example, succ(0) 0 is not valid because there is a 0 at the end of the program
+ */
 pub fn parse(tokens: Vec<Token>) -> Result<Term, SyntaxError> {
     let mut tokens = tokens.into_iter().peekable();
 
